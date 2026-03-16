@@ -1,0 +1,118 @@
+version: "3.9"
+
+services:
+  auth_db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+
+  project_db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: project_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - project_db_data:/var/lib/postgresql/data
+
+  auth_service:
+    build: ./auth_service
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@auth_db:5432/auth_db
+      JWT_SECRET: super-secret-jwt-key
+    depends_on:
+      - auth_db
+
+  embedding_service:
+    build: ./embedding_service
+    ports:
+      - "5003:5003"
+    environment:
+      DEFAULT_EMBEDDING_MODEL: vietnamese-embedding
+      DEVICE: cpu
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+
+  project_service:
+    build: ./project_service
+    ports:
+      - "5002:5002"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@project_db:5432/project_db
+      JWT_SECRET: super-secret-jwt-key
+      EMBEDDING_SERVICE_URL: http://embedding_service:5003
+    depends_on:
+      - project_db
+      - embedding_service
+
+  weaviate:
+    image: semitechnologies/weaviate:1.28.4
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: none
+      CLUSTER_HOSTNAME: node1
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+  indexing_service:
+    build: ./indexing_service
+    ports:
+      - "5004:5004"
+    environment:
+      WEAVIATE_URL: http://weaviate:8080
+      VECTORIZE_URL: http://embedding_service:5003/vectorize
+      PROJECT_SERVICE_URL: http://project_service:5002
+      JWT_SECRET: super-secret-jwt-key
+    depends_on:
+      - weaviate
+      - embedding_service
+      - project_service
+
+  query_service:
+    build: ./query_service
+    ports:
+      - "5005:5005"
+    environment:
+      WEAVIATE_URL: http://weaviate:8080
+      VECTORIZE_URL: http://embedding_service:5003/vectorize
+      PROJECT_SERVICE_URL: http://project_service:5002
+      LLM_API_URL: http://host.docker.internal:11434/api/generate
+      JWT_SECRET: super-secret-jwt-key
+      MAX_NEW_TOKENS: "512"
+      TEMPERATURE: "0.7"
+      TOP_K_RESULTS: "3"
+    depends_on:
+      - weaviate
+      - embedding_service
+      - project_service
+
+  ui_service:
+    build: ./ui_service
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth_service
+      - project_service
+      - indexing_service
+      - query_service
+
+volumes:
+  auth_db_data:
+  project_db_data:
+  hf_cache:
+  weaviate_data:

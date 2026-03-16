@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+weaviate-client>=3.26,<4.0
+requests
+pyvi
+PyJWT
+numpy

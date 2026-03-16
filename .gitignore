@@ -1,0 +1,47 @@
+# Environment files (contain secrets)
+.env
+**/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# HuggingFace cache
+.cache/
+
+# Vite
+services/ui_service/dist/
+
+# Flask migrations (optional, uncomment if you don't want to track)
+# services/*/migrations/

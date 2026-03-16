@@ -1,0 +1,122 @@
+1?? Auth Service
+
+Auth service ch? qu?n l? tenant + user + login session.
+
+Tables
+tenants
+tenants
+-------
+id UUID PRIMARY KEY
+name VARCHAR
+admin_email VARCHAR
+created_at TIMESTAMP
+status VARCHAR
+users
+users
+-----
+id UUID PRIMARY KEY
+tenant_id UUID
+email VARCHAR UNIQUE
+password_hash TEXT
+role VARCHAR CHECK(role IN ('admin','member'))
+created_at TIMESTAMP
+status VARCHAR
+
+Quan h?:
+
+tenant 1 --- n users
+refresh_tokens
+refresh_tokens
+--------------
+id UUID PRIMARY KEY
+user_id UUID
+token_hash TEXT
+expires_at TIMESTAMP
+created_at TIMESTAMP
+
+Quan h?:
+
+user 1 --- n refresh_tokens
+API c?a Auth Service
+API	Method	Ch?c n?ng
+POST /auth/register	POST	t?o tenant + admin
+POST /auth/login	POST	login
+POST /auth/refresh	POST	c?p access token m?i
+GET /auth/me	GET	th?ng tin user
+POST /users	POST	t?o user con
+GET /users	GET	list user
+2?? Project Service
+
+Service n?y qu?n l? project + API key + documents.
+
+Tables
+projects
+projects
+--------
+id UUID PRIMARY KEY
+tenant_id UUID
+name VARCHAR
+created_by UUID
+created_at TIMESTAMP
+status VARCHAR
+
+Quan h?:
+
+tenant 1 --- n projects
+api_keys
+api_keys
+--------
+id UUID PRIMARY KEY
+project_id UUID
+key_hash TEXT
+created_at TIMESTAMP
+status VARCHAR
+
+Quan h?:
+
+project 1 --- n api_keys
+documents
+documents
+---------
+id UUID PRIMARY KEY
+project_id UUID
+file_name VARCHAR
+s3_path TEXT
+status VARCHAR
+created_at TIMESTAMP
+
+status:
+
+uploaded
+processing
+indexed
+failed
+
+Quan h?:
+
+project 1 --- n documents
+3?? Quan h? to?n h? th?ng
+tenant
+   „ 
+   „¥„Ÿ„Ÿ users
+   „ 
+   „¤„Ÿ„Ÿ projects
+          „ 
+          „¥„Ÿ„Ÿ api_keys
+          „ 
+          „¤„Ÿ„Ÿ documents
+4?? API c?a Project Service
+Project
+API	Method
+POST /projects	
+GET /projects	
+GET /projects/{id}	
+API Keys
+API	Method
+POST /projects/{id}/api-keys	
+GET /projects/{id}/api-keys	
+Documents
+API	Method
+POST /projects/{id}/documents	
+GET /projects/{id}/documents	
+DELETE /documents/{id}
