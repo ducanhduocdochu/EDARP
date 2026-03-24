@@ -43,6 +43,18 @@ services:
     volumes:
       - hf_cache:/root/.cache/huggingface
 
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
   project_service:
     build: ./project_service
     ports:
@@ -51,9 +63,15 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@project_db:5432/project_db
       JWT_SECRET: super-secret-jwt-key
       EMBEDDING_SERVICE_URL: http://embedding_service:5003
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: platform-rag
+      S3_REGION: us-east-1
     depends_on:
       - project_db
       - embedding_service
+      - minio
 
   weaviate:
     image: semitechnologies/weaviate:1.28.4
@@ -116,3 +134,4 @@ volumes:
   project_db_data:
   hf_cache:
   weaviate_data:
+  minio_data:

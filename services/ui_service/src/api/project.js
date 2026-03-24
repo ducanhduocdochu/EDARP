@@ -19,8 +19,13 @@ export const createApiKey = (projectId) =>
 export const getDocuments = (projectId) =>
   api.get(`/projects/${projectId}/documents`);
 
-export const createDocument = (projectId, payload) =>
-  api.post(`/projects/${projectId}/documents`, payload);
+export const uploadDocument = (projectId, file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post(`/projects/${projectId}/documents`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
 
 export const deleteDocument = (documentId) =>
   api.delete(`/documents/${documentId}`);

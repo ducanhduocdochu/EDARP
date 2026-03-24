@@ -46,7 +46,7 @@ import {
   getApiKeys,
   createApiKey,
   getDocuments,
-  createDocument,
+  uploadDocument,
   deleteDocument,
   embedText,
 } from "../api/project";
@@ -73,8 +73,7 @@ export default function ProjectDetail() {
   const [editModal, setEditModal] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [newKeyVisible, setNewKeyVisible] = useState(null);
-  const [docModal, setDocModal] = useState(false);
-  const [docCreating, setDocCreating] = useState(false);
+  const [docUploading, setDocUploading] = useState(false);
   const [embedInput, setEmbedInput] = useState("");
   const [embedResult, setEmbedResult] = useState(null);
   const [embedding, setEmbedding] = useState(false);
@@ -89,7 +88,6 @@ export default function ProjectDetail() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatTopK, setChatTopK] = useState(3);
-  const [form] = Form.useForm();
   const [editForm] = Form.useForm();
 
   const fetchProject = async () => {
@@ -184,19 +182,18 @@ export default function ProjectDetail() {
     }
   };
 
-  const handleCreateDoc = async (values) => {
-    setDocCreating(true);
+  const handleUploadDoc = async (file) => {
+    setDocUploading(true);
     try {
-      await createDocument(id, values);
-      message.success("Document created");
-      setDocModal(false);
-      form.resetFields();
+      await uploadDocument(id, file);
+      message.success(`"${file.name}" uploaded`);
       fetchDocuments();
     } catch (err) {
-      message.error(err.response?.data?.error || "Failed to create document");
+      message.error(err.response?.data?.error || "Upload failed");
     } finally {
-      setDocCreating(false);
+      setDocUploading(false);
     }
+    return false;
   };
 
   const handleDeleteDoc = async (docId) => {
@@ -349,7 +346,7 @@ export default function ProjectDetail() {
       dataIndex: "s3_path",
       key: "s3_path",
       ellipsis: true,
-      render: (v) => v || "—",
+      render: (v) => <Text type="secondary" style={{ fontSize: 12 }}>{v || "—"}</Text>,
     },
     {
       title: "Status",
@@ -367,14 +364,21 @@ export default function ProjectDetail() {
       title: "Actions",
       key: "actions",
       render: (_, record) => (
-        <Popconfirm
-          title="Delete this document?"
-          onConfirm={() => handleDeleteDoc(record.id)}
-        >
-          <Button type="link" danger icon={<DeleteOutlined />}>
-            Delete
-          </Button>
-        </Popconfirm>
+        <Space>
+          {record.download_url && (
+            <a href={record.download_url} target="_blank" rel="noopener noreferrer">
+              <Button type="link" size="small">Download</Button>
+            </a>
+          )}
+          <Popconfirm
+            title="Delete this document?"
+            onConfirm={() => handleDeleteDoc(record.id)}
+          >
+            <Button type="link" danger icon={<DeleteOutlined />} size="small">
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -546,10 +550,19 @@ export default function ProjectDetail() {
       children: (
         <>
           <div style={{ marginBottom: 16, display: "flex", justifyContent: "flex-end" }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setDocModal(true)}>
-              Add Document
-            </Button>
+            <Upload
+              showUploadList={false}
+              beforeUpload={handleUploadDoc}
+              disabled={docUploading}
+            >
+              <Button type="primary" icon={<UploadOutlined />} loading={docUploading}>
+                Upload Document
+              </Button>
+            </Upload>
           </div>
+          <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+            Files are stored in S3 under <code>/{"{tenant_id}"}/{"{project_id}"}/</code>
+          </Paragraph>
           <Table
             columns={docColumns}
             dataSource={documents}
@@ -819,35 +832,6 @@ export default function ProjectDetail() {
         <Tooltip title="Click copy to save">
           <Input value={newKeyVisible} readOnly style={{ fontFamily: "monospace" }} />
         </Tooltip>
-      </Modal>
-
-      <Modal
-        title="Add Document"
-        open={docModal}
-        onCancel={() => {
-          setDocModal(false);
-          form.resetFields();
-        }}
-        footer={null}
-      >
-        <Form form={form} layout="vertical" onFinish={handleCreateDoc}>
-          <Form.Item
-            name="file_name"
-            label="File Name"
-            rules={[{ required: true, message: "Please enter file name" }]}
-          >
-            <Input placeholder="document.pdf" />
-          </Form.Item>
-          <Form.Item name="s3_path" label="S3 Path">
-            <Input placeholder="s3://bucket/path/document.pdf" />
-          </Form.Item>
-          <Space style={{ width: "100%", justifyContent: "flex-end" }}>
-            <Button onClick={() => setDocModal(false)}>Cancel</Button>
-            <Button type="primary" htmlType="submit" loading={docCreating}>
-              Create
-            </Button>
-          </Space>
-        </Form>
       </Modal>
 
       <Modal
