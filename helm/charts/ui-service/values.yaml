@@ -1,0 +1,65 @@
+replicaCount: 2
+
+image:
+  registry: harbor.ducanh.io.vn
+  repository: platform-rag-stag/ui-service
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: harbor-pull-secret
+
+service:
+  type: ClusterIP
+  port: 3000
+
+containerPort: 3000
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443},{"HTTP":80}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /
+  hosts:
+    - host: app.platform-rag.io.vn
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+env: {}
+
+envFrom: []
+
+healthCheck:
+  liveness:
+    path: /
+    port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 15
+  readiness:
+    path: /
+    port: 3000
+    initialDelaySeconds: 3
+    periodSeconds: 10
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

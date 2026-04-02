@@ -1,0 +1,68 @@
+replicaCount: 2
+
+image:
+  registry: harbor.ducanh.io.vn
+  repository: platform-rag-stag/project-service
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: harbor-pull-secret
+
+service:
+  type: ClusterIP
+  port: 5002
+
+containerPort: 5002
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+  hosts:
+    - host: project.platform-rag.internal
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  DATABASE_URL: ""
+  JWT_SECRET: ""
+  EMBEDDING_SERVICE_URL: "http://embedding-service:5003"
+
+envFrom:
+  - secretRef:
+      name: platform-rag-secrets
+
+healthCheck:
+  liveness:
+    path: /health
+    port: 5002
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readiness:
+    path: /health
+    port: 5002
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

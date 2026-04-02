@@ -1,0 +1,18 @@
+image:
+  tag: "latest"
+
+replicaCount: 2
+
+env:
+  WEAVIATE_URL: "http://10.0.10.x:8080"
+  VECTORIZE_URL: "http://embedding-service:5003"
+  PROJECT_SERVICE_URL: "http://project-service:5002"
+  LLM_API_URL: "http://llm-host:11434"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

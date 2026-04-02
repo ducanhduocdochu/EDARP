@@ -13,7 +13,7 @@ rds_instance_class  = "db.t3.medium"
 rds_auth_db_name    = "auth_db"
 rds_project_db_name = "project_db"
 rds_master_username = "dbadmin"
-# rds_master_password = "CHANGE_ME"  # pass via TF_VAR_rds_master_password or -var
+# rds_master_password = "ducanhdeptrai"  # pass via TF_VAR_rds_master_password or -var
 
 # EKS
 eks_cluster_version     = "1.29"
@@ -32,5 +32,5 @@ weaviate_version          = "1.28.4"
 s3_force_destroy = false
 
 # Application
-# jwt_secret = "CHANGE_ME"  # pass via TF_VAR_jwt_secret or -var
+# jwt_secret = "ducanhdeptrai"  # pass via TF_VAR_jwt_secret or -var
 llm_api_url = "http://localhost:11434"

@@ -1,0 +1,65 @@
+---
+- name: Create monitoring namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ monitoring_namespace }}"
+  tags: [monitoring, namespace]
+
+# ─── Fluent Bit (log forwarding to CloudWatch) ──────────────────────────────
+- name: Add Fluent Bit Helm repository
+  kubernetes.core.helm_repository:
+    name: fluent
+    repo_url: https://fluent.github.io/helm-charts
+    state: present
+  when: fluentbit_enabled
+  tags: [monitoring, fluentbit]
+
+- name: Create CloudWatch log group
+  amazon.aws.cloudwatchlogs_log_group:
+    log_group_name: "{{ fluentbit_log_group }}"
+    retention: "{{ fluentbit_log_retention_days }}"
+    region: "{{ aws_region }}"
+    state: present
+  when: fluentbit_enabled
+  tags: [monitoring, fluentbit]
+
+- name: Install Fluent Bit via Helm
+  kubernetes.core.helm:
+    name: fluent-bit
+    chart_ref: fluent/fluent-bit
+    chart_version: "{{ fluentbit_chart_version }}"
+    release_namespace: "{{ monitoring_namespace }}"
+    create_namespace: false
+    values:
+      config:
+        outputs: |
+          [OUTPUT]
+              Name              cloudwatch_logs
+              Match             *
+              region            {{ aws_region }}
+              log_group_name    {{ fluentbit_log_group }}
+              log_stream_prefix eks-
+              auto_create_group true
+        filters: |
+          [FILTER]
+              Name              kubernetes
+              Match             kube.*
+              Merge_Log         On
+              Keep_Log          Off
+              K8S-Logging.Parser On
+      tolerations:
+        - operator: Exists
+  when: fluentbit_enabled
+  tags: [monitoring, fluentbit]
+
+# ─── CloudWatch Container Insights ──────────────────────────────────────────
+- name: Install CloudWatch Agent (Container Insights)
+  kubernetes.core.k8s:
+    state: present
+    template: cloudwatch-agent.yml.j2
+  when: cloudwatch_agent_enabled
+  tags: [monitoring, cloudwatch]

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: indexing-service
+description: Indexing Service — Document tokenization, vectorization, Weaviate import (FastAPI)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - indexing
+  - weaviate
+  - fastapi
+  - platform-rag
+maintainers:
+  - name: platform-rag-team

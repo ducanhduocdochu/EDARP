@@ -1,0 +1,103 @@
+---
+- name: Create Harbor namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ harbor_namespace }}"
+  tags: [harbor, namespace]
+
+- name: Add Harbor Helm repository
+  kubernetes.core.helm_repository:
+    name: harbor
+    repo_url: https://helm.goharbor.io
+    state: present
+  tags: [harbor, helm]
+
+- name: Install Harbor via Helm
+  kubernetes.core.helm:
+    name: harbor
+    chart_ref: harbor/harbor
+    chart_version: "{{ harbor_chart_version }}"
+    release_namespace: "{{ harbor_namespace }}"
+    create_namespace: false
+    values:
+      expose:
+        type: ingress
+        ingress:
+          className: alb
+          hosts:
+            core: "{{ harbor_domain }}"
+        tls:
+          enabled: false
+      externalURL: "https://{{ harbor_domain }}"
+      harborAdminPassword: "{{ harbor_admin_password }}"
+      persistence:
+        enabled: true
+        persistentVolumeClaim:
+          registry:
+            storageClass: "{{ harbor_storage_class }}"
+            size: "{{ harbor_registry_size }}"
+          database:
+            storageClass: "{{ harbor_storage_class }}"
+            size: "{{ harbor_database_size }}"
+      database:
+        type: internal
+      trivy:
+        enabled: true
+  no_log: true
+  tags: [harbor, install]
+
+- name: Wait for Harbor core to be ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: harbor-core
+    namespace: "{{ harbor_namespace }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 600
+  tags: [harbor, health]
+
+- name: Create Harbor projects
+  ansible.builtin.uri:
+    url: "https://{{ harbor_domain }}/api/v2.0/projects"
+    method: POST
+    user: admin
+    password: "{{ harbor_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      project_name: "{{ item.name }}"
+      metadata:
+        public: "{{ item.public | string | lower }}"
+    status_code: [201, 409]
+    validate_certs: false
+  loop: "{{ harbor_projects }}"
+  tags: [harbor, projects]
+
+- name: Create EKS image pull secret for Harbor
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: harbor-pull-secret
+        namespace: "{{ eks_namespace }}"
+      type: kubernetes.io/dockerconfigjson
+      stringData:
+        .dockerconfigjson: |
+          {
+            "auths": {
+              "{{ harbor_domain }}": {
+                "username": "admin",
+                "password": "{{ harbor_admin_password }}"
+              }
+            }
+          }
+  no_log: true
+  tags: [harbor, secrets]

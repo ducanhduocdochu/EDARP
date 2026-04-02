@@ -1,0 +1,13 @@
+apiVersion: v2
+name: auth-service
+description: Auth Service — Multi-tenant authentication (Flask)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - auth
+  - jwt
+  - flask
+  - platform-rag
+maintainers:
+  - name: platform-rag-team

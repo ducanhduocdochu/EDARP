@@ -1,0 +1,16 @@
+image:
+  tag: "latest"
+
+replicaCount: 1
+
+env:
+  DEFAULT_MODEL: "vietnamese-embedding"
+  DEVICE: "cpu"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi

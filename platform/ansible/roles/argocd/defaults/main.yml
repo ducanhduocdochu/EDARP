@@ -1,0 +1,28 @@
+---
+argocd_namespace: argocd
+argocd_version: "v2.13.3"
+argocd_chart_version: "7.7.10"
+argocd_server_host: "argocd.{{ project_name }}.internal"
+argocd_admin_password: "{{ vault_argocd_admin_password }}"
+
+argocd_repo_url: "https://github.com/your-org/platform-rag.git"
+argocd_repo_branch: main
+argocd_applications:
+  - name: auth-service
+    chart_path: helm/charts/auth-service
+    values_path: apps/envs/stag/auth-service/values.yaml
+  - name: project-service
+    chart_path: helm/charts/project-service
+    values_path: apps/envs/stag/project-service/values.yaml
+  - name: embedding-service
+    chart_path: helm/charts/embedding-service
+    values_path: apps/envs/stag/embedding-service/values.yaml
+  - name: indexing-service
+    chart_path: helm/charts/indexing-service
+    values_path: apps/envs/stag/indexing-service/values.yaml
+  - name: query-service
+    chart_path: helm/charts/query-service
+    values_path: apps/envs/stag/query-service/values.yaml
+  - name: ui-service
+    chart_path: helm/charts/ui-service
+    values_path: apps/envs/stag/ui-service/values.yaml

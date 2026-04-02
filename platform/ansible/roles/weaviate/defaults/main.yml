@@ -1,0 +1,20 @@
+---
+weaviate_version: "1.28.4"
+weaviate_port: 8080
+weaviate_grpc_port: 50051
+weaviate_data_path: /data/weaviate
+weaviate_data_device: /dev/xvdf
+
+weaviate_container_name: weaviate
+weaviate_image: "cr.weaviate.io/semitechnologies/weaviate:{{ weaviate_version }}"
+
+weaviate_query_defaults_limit: 25
+weaviate_authentication_anonymous: true
+weaviate_default_vectorizer: none
+weaviate_log_level: info
+
+weaviate_memory_limit: "{{ (ansible_memtotal_mb * 0.8) | int }}m"
+
+weaviate_backup_enabled: false
+weaviate_backup_s3_bucket: ""
+weaviate_backup_s3_path: "weaviate-backups"

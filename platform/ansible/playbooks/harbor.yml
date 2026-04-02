@@ -1,0 +1,11 @@
+---
+# Install Harbor container registry on EKS
+# Usage: ansible-playbook playbooks/harbor.yml -i inventories/stag/hosts.yml --ask-vault-pass
+
+- name: Deploy Harbor registry
+  hosts: local
+  gather_facts: false
+
+  roles:
+    - role: harbor
+      tags: [harbor]

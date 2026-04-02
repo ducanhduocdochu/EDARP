@@ -1,0 +1,11 @@
+---
+# Install and configure ArgoCD for GitOps deployment
+# Usage: ansible-playbook playbooks/argocd.yml -i inventories/stag/hosts.yml --ask-vault-pass
+
+- name: Deploy ArgoCD
+  hosts: local
+  gather_facts: false
+
+  roles:
+    - role: argocd
+      tags: [argocd]

@@ -1,0 +1,43 @@
+---
+# ─── Environment ─────────────────────────────────────────────────────────────
+env: prod
+aws_region: ap-southeast-1
+project_name: platform-rag
+name_prefix: "{{ project_name }}-{{ env }}"
+
+# ─── EKS ─────────────────────────────────────────────────────────────────────
+eks_cluster_name: "{{ name_prefix }}-eks"
+eks_namespace: platform-rag
+
+# ─── RDS ─────────────────────────────────────────────────────────────────────
+rds_auth_host: "{{ lookup('env', 'RDS_AUTH_HOST') }}"
+rds_auth_port: 5432
+rds_auth_db: auth_db
+rds_project_host: "{{ lookup('env', 'RDS_PROJECT_HOST') }}"
+rds_project_port: 5432
+rds_project_db: project_db
+rds_master_username: dbadmin
+rds_master_password: "{{ vault_rds_master_password }}"
+
+# ─── Weaviate ────────────────────────────────────────────────────────────────
+weaviate_version: "1.28.4"
+weaviate_port: 8080
+weaviate_grpc_port: 50051
+weaviate_data_path: /data/weaviate
+
+# ─── Application ─────────────────────────────────────────────────────────────
+jwt_secret: "{{ vault_jwt_secret }}"
+llm_api_url: "http://localhost:11434"
+
+# ─── Container Registry (Harbor) ────────────────────────────────────────────
+harbor_domain: "harbor.{{ project_name }}.internal"
+harbor_admin_password: "{{ vault_harbor_admin_password }}"
+
+# ─── ArgoCD ──────────────────────────────────────────────────────────────────
+argocd_namespace: argocd
+argocd_version: "v2.13.3"
+argocd_server_host: "argocd.{{ project_name }}.internal"
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+docker_edition: ce
+docker_install_compose: true

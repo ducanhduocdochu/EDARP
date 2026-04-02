@@ -1,0 +1,13 @@
+---
+# Configure Weaviate VectorDB on EC2
+# Usage: ansible-playbook playbooks/weaviate.yml -i inventories/stag/hosts.yml
+
+- name: Provision Weaviate EC2
+  hosts: weaviate
+  become: true
+
+  roles:
+    - role: common
+      tags: [common]
+    - role: weaviate
+      tags: [weaviate]

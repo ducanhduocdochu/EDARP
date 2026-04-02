@@ -1,0 +1,35 @@
+services:
+  weaviate:
+    image: {{ weaviate_image }}
+    container_name: {{ weaviate_container_name }}
+    restart: unless-stopped
+    ports:
+      - "{{ weaviate_port }}:8080"
+      - "{{ weaviate_grpc_port }}:50051"
+    volumes:
+      - {{ weaviate_data_path }}:/var/lib/weaviate
+    environment:
+      QUERY_DEFAULTS_LIMIT: "{{ weaviate_query_defaults_limit }}"
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "{{ weaviate_authentication_anonymous | lower }}"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: "{{ weaviate_default_vectorizer }}"
+      CLUSTER_HOSTNAME: node1
+      ENABLE_MODULES: "{% if weaviate_backup_enabled %}backup-s3{% endif %}"
+      LOG_LEVEL: "{{ weaviate_log_level }}"
+      LIMIT_RESOURCES: "false"
+{% if weaviate_backup_enabled %}
+      BACKUP_S3_BUCKET: "{{ weaviate_backup_s3_bucket }}"
+      BACKUP_S3_PATH: "{{ weaviate_backup_s3_path }}"
+      BACKUP_S3_USE_SSL: "true"
+{% endif %}
+      GOMEMLIMIT: "{{ weaviate_memory_limit }}"
+    deploy:
+      resources:
+        limits:
+          memory: "{{ weaviate_memory_limit }}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

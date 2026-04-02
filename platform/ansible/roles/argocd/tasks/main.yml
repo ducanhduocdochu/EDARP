@@ -1,0 +1,75 @@
+---
+- name: Create ArgoCD namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ argocd_namespace }}"
+  tags: [argocd, namespace]
+
+- name: Add ArgoCD Helm repository
+  kubernetes.core.helm_repository:
+    name: argo
+    repo_url: https://argoproj.github.io/argo-helm
+    state: present
+  tags: [argocd, helm]
+
+- name: Install ArgoCD via Helm
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    chart_version: "{{ argocd_chart_version }}"
+    release_namespace: "{{ argocd_namespace }}"
+    create_namespace: false
+    values:
+      server:
+        extraArgs:
+          - --insecure
+        ingress:
+          enabled: true
+          ingressClassName: alb
+          hostname: "{{ argocd_server_host }}"
+      configs:
+        params:
+          server.insecure: true
+  tags: [argocd, install]
+
+- name: Wait for ArgoCD server to be ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    name: argocd-server
+    namespace: "{{ argocd_namespace }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 300
+  tags: [argocd, health]
+
+- name: Configure ArgoCD Git repository
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: platform-rag-repo
+        namespace: "{{ argocd_namespace }}"
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      type: Opaque
+      stringData:
+        type: git
+        url: "{{ argocd_repo_url }}"
+  tags: [argocd, repo]
+
+- name: Deploy ArgoCD Applications
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'application.yml.j2') }}"
+  loop: "{{ argocd_applications }}"
+  loop_control:
+    loop_var: app
+  tags: [argocd, apps]

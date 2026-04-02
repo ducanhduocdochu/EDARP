@@ -1,0 +1,329 @@
+name: CI/CD Pipeline — Build & Push to Harbor
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "services/**"
+  pull_request:
+    branches: [master, main]
+    paths:
+      - "services/**"
+
+env:
+  HARBOR_REGISTRY: harbor.ducanh.io.vn
+  HARBOR_PROJECT: platform-rag-stag
+
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 1. Detect which services changed
+  # ═══════════════════════════════════════════════════════════════════════════
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.changes.outputs.services }}
+      has_changes: ${{ steps.changes.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed services
+        id: changes
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD 2>/dev/null || git diff --name-only HEAD)
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          SERVICES=()
+          while IFS= read -r file; do
+            if [[ "$file" == services/* ]]; then
+              svc=$(echo "$file" | cut -d'/' -f2)
+              SERVICES+=("$svc")
+            fi
+          done <<< "$CHANGED_FILES"
+
+          # Deduplicate
+          UNIQUE_SERVICES=($(echo "${SERVICES[@]}" | tr ' ' '\n' | sort -u))
+
+          if [ ${#UNIQUE_SERVICES[@]} -eq 0 ]; then
+            echo "No services changed"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo 'services=[]' >> "$GITHUB_OUTPUT"
+          else
+            JSON=$(printf '%s\n' "${UNIQUE_SERVICES[@]}" | jq -R . | jq -sc .)
+            echo "Detected services: $JSON"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "services=$JSON" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 2. DevSecOps — Secret Scan (Gitleaks)
+  # ═══════════════════════════════════════════════════════════════════════════
+  secret-scan:
+    name: Secret Scan (Gitleaks)
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: Upload Gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: results.sarif
+          retention-days: 30
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 3. DevSecOps — Dependency Scan (Trivy filesystem)
+  # ═══════════════════════════════════════════════════════════════════════════
+  dependency-scan:
+    name: Dependency Scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+          output: trivy-dependency-report.txt
+
+      - name: Upload dependency scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-dependency-report
+          path: trivy-dependency-report.txt
+          retention-days: 30
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 4. DevSecOps — SonarQube Scan (per changed service)
+  # ═══════════════════════════════════════════════════════════════════════════
+  sonarqube-scan:
+    name: "SonarQube — ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=platform-rag-${{ matrix.service }}
+            -Dsonar.projectName=${{ matrix.service }}
+            -Dsonar.sources=services/${{ matrix.service }}
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 5. Build → Scan → Push to Harbor (per changed service)
+  # ═══════════════════════════════════════════════════════════════════════════
+  build-scan-push:
+    name: "Build & Push — ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    needs: [detect-changes, secret-scan, dependency-scan]
+    if: >-
+      needs.detect-changes.outputs.has_changes == 'true' &&
+      github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          SERVICE="${{ matrix.service }}"
+          TAG="${GITHUB_SHA::7}"
+
+          declare -A IMAGE_MAP=(
+            [auth_service]="auth-service"
+            [project_service]="project-service"
+            [embedding_service]="embedding-service"
+            [indexing_service]="indexing-service"
+            [query_service]="query-service"
+            [ui_service]="ui-service"
+          )
+
+          IMAGE_NAME="${IMAGE_MAP[$SERVICE]:-$SERVICE}"
+          FULL_IMAGE="${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${IMAGE_NAME}"
+
+          echo "image_name=${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "full_image=${FULL_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "dockerfile=services/${SERVICE}/Dockerfile" >> "$GITHUB_OUTPUT"
+          echo "context=services/${SERVICE}" >> "$GITHUB_OUTPUT"
+
+      # ── Build ──────────────────────────────────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.meta.outputs.context }}
+          file: ${{ steps.meta.outputs.dockerfile }}
+          load: true
+          tags: |
+            ${{ steps.meta.outputs.full_image }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.full_image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Scan Image (Trivy) ────────────────────────────────────────────
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "${{ steps.meta.outputs.full_image }}:${{ steps.meta.outputs.tag }}"
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+          output: "trivy-image-${{ matrix.service }}.txt"
+
+      - name: Upload image scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "trivy-image-${{ matrix.service }}"
+          path: "trivy-image-${{ matrix.service }}.txt"
+          retention-days: 30
+
+      # ── Push to Harbor ─────────────────────────────────────────────────
+      - name: Login to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Push image to Harbor
+        run: |
+          docker push "${{ steps.meta.outputs.full_image }}:${{ steps.meta.outputs.tag }}"
+          docker push "${{ steps.meta.outputs.full_image }}:latest"
+          echo "### Pushed :rocket:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`${{ steps.meta.outputs.full_image }}:${{ steps.meta.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 6. Update GitOps repo (trigger ArgoCD sync)
+  # ═══════════════════════════════════════════════════════════════════════════
+  update-gitops:
+    name: "GitOps — ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-scan-push]
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    strategy:
+      max-parallel: 1
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Update GitOps values
+        run: |
+          SERVICE="${{ matrix.service }}"
+          TAG="${GITHUB_SHA::7}"
+
+          declare -A IMAGE_MAP=(
+            [auth_service]="auth-service"
+            [project_service]="project-service"
+            [embedding_service]="embedding-service"
+            [indexing_service]="indexing-service"
+            [query_service]="query-service"
+            [ui_service]="ui-service"
+          )
+          SVC_NAME="${IMAGE_MAP[$SERVICE]:-$SERVICE}"
+
+          VALUES_FILE="apps/envs/stag/${SVC_NAME}/values.yaml"
+
+          echo "=== Update ${VALUES_FILE} → tag: ${TAG} ==="
+          sed -i "s/tag:.*/tag: \"${TAG}\"/" "$VALUES_FILE"
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+          git add "$VALUES_FILE"
+          git commit -m "chore(${SVC_NAME}): update image tag to ${TAG}" || true
+          git push
+
+          echo "### GitOps Updated :arrows_counterclockwise:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Service: \`${SVC_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: \`${TAG}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 7. Security Dashboard Summary
+  # ═══════════════════════════════════════════════════════════════════════════
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [secret-scan, dependency-scan, build-scan-push]
+    if: always()
+    steps:
+      - name: Download all scan artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: reports
+          merge-multiple: false
+
+      - name: Generate security summary
+        run: |
+          echo "## DevSecOps Security Dashboard" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "### Secret Scan (Gitleaks)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f reports/gitleaks-report/results.sarif ]; then
+            FINDINGS=$(jq '.runs[0].results | length' reports/gitleaks-report/results.sarif 2>/dev/null || echo "N/A")
+            echo "- Findings: **${FINDINGS}**" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- No report generated" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "### Dependency Scan (Trivy)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f reports/trivy-dependency-report/trivy-dependency-report.txt ]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -20 reports/trivy-dependency-report/trivy-dependency-report.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- No report generated" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "### Container Image Scans" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Service | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          for dir in reports/trivy-image-*; do
+            if [ -d "$dir" ]; then
+              SVC=$(basename "$dir" | sed 's/trivy-image-//')
+              echo "| ${SVC} | :white_check_mark: Scanned |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done

@@ -1,0 +1,16 @@
+image:
+  tag: "latest"
+
+replicaCount: 2
+
+env:
+  DATABASE_URL: "postgresql://dbadmin:ducanhdeptrai@platform-rag-stag-project-db.xxxxxx.ap-southeast-1.rds.amazonaws.com:5432/project_db"
+  EMBEDDING_SERVICE_URL: "http://embedding-service:5003"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,0 +1,79 @@
+---
+- name: Update system packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_only: true
+  tags: [packages]
+
+- name: Install required packages
+  ansible.builtin.dnf:
+    name: "{{ common_packages }}"
+    state: present
+  tags: [packages]
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ common_timezone }}"
+  tags: [system]
+
+- name: Apply sysctl parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop: "{{ common_sysctl_params | dict2items }}"
+  tags: [system, sysctl]
+
+- name: Disable swap
+  ansible.builtin.command: swapoff -a
+  changed_when: false
+  tags: [system]
+
+- name: Remove swap from fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '\sswap\s'
+    state: absent
+  tags: [system]
+
+- name: Configure SSH hardening
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+    - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+    - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+  notify: restart sshd
+  tags: [security]
+
+- name: Ensure fail2ban is installed
+  ansible.builtin.dnf:
+    name: fail2ban
+    state: present
+  tags: [security]
+
+- name: Start and enable fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: started
+    enabled: true
+  tags: [security]
+
+- name: Install AWS CLI v2
+  ansible.builtin.shell: |
+    if ! command -v aws &>/dev/null; then
+      cd /tmp
+      curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+      unzip -qo awscliv2.zip
+      ./aws/install
+      rm -rf aws awscliv2.zip
+    fi
+  args:
+    creates: /usr/local/bin/aws
+  tags: [packages, aws]

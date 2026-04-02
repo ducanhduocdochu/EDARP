@@ -1,0 +1,56 @@
+replicaCount: 1
+
+image:
+  registry: harbor.ducanh.io.vn
+  repository: platform-rag-stag/embedding-service
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: harbor-pull-secret
+
+service:
+  type: ClusterIP
+  port: 5003
+
+containerPort: 5003
+
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+env:
+  DEFAULT_MODEL: "vietnamese-embedding"
+  DEVICE: "cpu"
+  PORT: "5003"
+
+envFrom: []
+
+healthCheck:
+  liveness:
+    path: /health
+    port: 5003
+    initialDelaySeconds: 30
+    periodSeconds: 20
+  readiness:
+    path: /health
+    port: 5003
+    initialDelaySeconds: 20
+    periodSeconds: 10
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 60
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: ui-service
+description: UI Service — React SPA with Ant Design (Vite/Nginx)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - ui
+  - react
+  - frontend
+  - platform-rag
+maintainers:
+  - name: platform-rag-team

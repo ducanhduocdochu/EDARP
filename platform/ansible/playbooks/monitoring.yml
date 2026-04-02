@@ -1,0 +1,11 @@
+---
+# Setup monitoring stack (Fluent Bit, CloudWatch Container Insights)
+# Usage: ansible-playbook playbooks/monitoring.yml -i inventories/stag/hosts.yml
+
+- name: Setup monitoring
+  hosts: local
+  gather_facts: false
+
+  roles:
+    - role: monitoring
+      tags: [monitoring]

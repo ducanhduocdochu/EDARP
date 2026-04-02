@@ -1,0 +1,12 @@
+---
+harbor_namespace: harbor
+harbor_chart_version: "1.15.1"
+harbor_domain: "harbor.{{ project_name }}.internal"
+harbor_admin_password: "{{ vault_harbor_admin_password }}"
+harbor_storage_class: gp3
+harbor_registry_size: 50Gi
+harbor_database_size: 5Gi
+
+harbor_projects:
+  - name: platform-rag
+    public: false

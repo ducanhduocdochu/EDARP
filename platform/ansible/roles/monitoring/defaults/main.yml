@@ -1,0 +1,14 @@
+---
+monitoring_namespace: monitoring
+
+cloudwatch_agent_enabled: true
+cloudwatch_namespace: "PlatformRAG/{{ env }}"
+
+fluentbit_enabled: true
+fluentbit_chart_version: "0.47.7"
+fluentbit_log_group: "/platform-rag/{{ env }}"
+fluentbit_log_retention_days: 30
+
+prometheus_enabled: false
+prometheus_chart_version: "65.3.1"
+grafana_admin_password: "{{ vault_harbor_admin_password }}"

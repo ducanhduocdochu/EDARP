@@ -1,0 +1,19 @@
+image:
+  tag: "latest"
+
+replicaCount: 2
+
+ingress:
+  hosts:
+    - host: app.platform-rag.io.vn
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

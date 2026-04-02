@@ -1,0 +1,27 @@
+---
+rds_auth_host: "{{ lookup('env', 'RDS_AUTH_HOST') }}"
+rds_auth_port: 5432
+rds_auth_db: auth_db
+rds_project_host: "{{ lookup('env', 'RDS_PROJECT_HOST') }}"
+rds_project_port: 5432
+rds_project_db: project_db
+rds_master_username: dbadmin
+rds_master_password: "{{ vault_rds_master_password }}"
+
+rds_app_users:
+  - name: auth_app
+    db: "{{ rds_auth_db }}"
+    host: "{{ rds_auth_host }}"
+    port: "{{ rds_auth_port }}"
+    password: "{{ vault_rds_master_password }}"
+    privs: "ALL"
+  - name: project_app
+    db: "{{ rds_project_db }}"
+    host: "{{ rds_project_host }}"
+    port: "{{ rds_project_port }}"
+    password: "{{ vault_rds_master_password }}"
+    privs: "ALL"
+
+rds_extensions:
+  - uuid-ossp
+  - pg_stat_statements

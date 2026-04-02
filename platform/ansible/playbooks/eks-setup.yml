@@ -1,0 +1,11 @@
+---
+# Setup EKS cluster post-provisioning (namespaces, secrets, RBAC, ALB controller)
+# Usage: ansible-playbook playbooks/eks-setup.yml -i inventories/stag/hosts.yml --ask-vault-pass
+
+- name: Setup EKS cluster
+  hosts: local
+  gather_facts: false
+
+  roles:
+    - role: eks_setup
+      tags: [eks]

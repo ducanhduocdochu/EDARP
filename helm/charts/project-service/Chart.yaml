@@ -1,0 +1,13 @@
+apiVersion: v2
+name: project-service
+description: Project Service — Project, API key, document management (Flask)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - project
+  - documents
+  - flask
+  - platform-rag
+maintainers:
+  - name: platform-rag-team

@@ -1,0 +1,87 @@
+---
+- name: Wait for auth_db RDS to be reachable
+  ansible.builtin.wait_for:
+    host: "{{ rds_auth_host }}"
+    port: "{{ rds_auth_port }}"
+    timeout: 120
+  tags: [rds, health]
+
+- name: Wait for project_db RDS to be reachable
+  ansible.builtin.wait_for:
+    host: "{{ rds_project_host }}"
+    port: "{{ rds_project_port }}"
+    timeout: 120
+  tags: [rds, health]
+
+- name: Enable PostgreSQL extensions on auth_db
+  community.postgresql.postgresql_ext:
+    name: "{{ item }}"
+    db: "{{ rds_auth_db }}"
+    login_host: "{{ rds_auth_host }}"
+    login_port: "{{ rds_auth_port }}"
+    login_user: "{{ rds_master_username }}"
+    login_password: "{{ rds_master_password }}"
+    state: present
+  loop: "{{ rds_extensions }}"
+  tags: [rds, extensions]
+
+- name: Enable PostgreSQL extensions on project_db
+  community.postgresql.postgresql_ext:
+    name: "{{ item }}"
+    db: "{{ rds_project_db }}"
+    login_host: "{{ rds_project_host }}"
+    login_port: "{{ rds_project_port }}"
+    login_user: "{{ rds_master_username }}"
+    login_password: "{{ rds_master_password }}"
+    state: present
+  loop: "{{ rds_extensions }}"
+  tags: [rds, extensions]
+
+- name: Create application database users
+  community.postgresql.postgresql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    db: "{{ item.db }}"
+    login_host: "{{ item.host }}"
+    login_port: "{{ item.port }}"
+    login_user: "{{ rds_master_username }}"
+    login_password: "{{ rds_master_password }}"
+    state: present
+  loop: "{{ rds_app_users }}"
+  no_log: true
+  tags: [rds, users]
+
+- name: Grant privileges to application users
+  community.postgresql.postgresql_privs:
+    database: "{{ item.db }}"
+    roles: "{{ item.name }}"
+    type: database
+    privs: "{{ item.privs }}"
+    login_host: "{{ item.host }}"
+    login_port: "{{ item.port }}"
+    login_user: "{{ rds_master_username }}"
+    login_password: "{{ rds_master_password }}"
+    state: present
+  loop: "{{ rds_app_users }}"
+  no_log: true
+  tags: [rds, users]
+
+- name: Apply auth_db schema
+  community.postgresql.postgresql_script:
+    db: "{{ rds_auth_db }}"
+    login_host: "{{ rds_auth_host }}"
+    login_port: "{{ rds_auth_port }}"
+    login_user: "{{ rds_master_username }}"
+    login_password: "{{ rds_master_password }}"
+    path: "{{ role_path }}/templates/auth_schema.sql.j2"
+  tags: [rds, schema]
+
+- name: Apply project_db schema
+  community.postgresql.postgresql_script:
+    db: "{{ rds_project_db }}"
+    login_host: "{{ rds_project_host }}"
+    login_port: "{{ rds_project_port }}"
+    login_user: "{{ rds_master_username }}"
+    login_password: "{{ rds_master_password }}"
+    path: "{{ role_path }}/templates/project_schema.sql.j2"
+  tags: [rds, schema]

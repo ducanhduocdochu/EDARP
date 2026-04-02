@@ -1,0 +1,21 @@
+---
+# Master playbook — provisions the entire platform
+# Usage: ansible-playbook playbooks/site.yml -i inventories/stag/hosts.yml --ask-vault-pass
+
+- name: Configure Weaviate EC2
+  import_playbook: weaviate.yml
+
+- name: Initialize RDS databases
+  import_playbook: rds-init.yml
+
+- name: Setup EKS cluster
+  import_playbook: eks-setup.yml
+
+- name: Deploy ArgoCD
+  import_playbook: argocd.yml
+
+- name: Deploy Harbor registry
+  import_playbook: harbor.yml
+
+- name: Setup monitoring
+  import_playbook: monitoring.yml

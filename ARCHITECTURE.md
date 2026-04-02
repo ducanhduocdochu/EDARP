@@ -37,23 +37,23 @@ Hệ thống được thiết kế theo kiến trúc **microservices**, mỗi se
 
 ## 2. Danh sách Services
 
-| Service | Framework | Port | Chức năng chính |
-|---------|-----------|------|-----------------|
-| **Auth Service** | Flask | 5001 | Quản lý tenant, user, đăng nhập, JWT token |
-| **Project Service** | Flask | 5002 | Quản lý project, API key, document metadata |
-| **Embedding Service** | FastAPI | 5003 | Text embedding với HuggingFace models |
-| **Indexing Service** | FastAPI | 5004 | Tokenize, vectorize, index vào Weaviate |
-| **Query Service** | FastAPI | 5005 | RAG pipeline: retrieve + prompt + LLM |
-| **UI Service** | React/Vite | 3000 | Giao diện web quản lý toàn bộ hệ thống |
+| Service               | Framework  | Port | Chức năng chính                             |
+| --------------------- | ---------- | ---- | ------------------------------------------- |
+| **Auth Service**      | Flask      | 5001 | Quản lý tenant, user, đăng nhập, JWT token  |
+| **Project Service**   | Flask      | 5002 | Quản lý project, API key, document metadata |
+| **Embedding Service** | FastAPI    | 5003 | Text embedding với HuggingFace models       |
+| **Indexing Service**  | FastAPI    | 5004 | Tokenize, vectorize, index vào Weaviate     |
+| **Query Service**     | FastAPI    | 5005 | RAG pipeline: retrieve + prompt + LLM       |
+| **UI Service**        | React/Vite | 3000 | Giao diện web quản lý toàn bộ hệ thống      |
 
 ### Infrastructure
 
-| Component | Image | Port | Chức năng |
-|-----------|-------|------|-----------|
-| **auth_db** | postgres:16-alpine | 5433 | PostgreSQL cho Auth Service |
-| **project_db** | postgres:16-alpine | 5434 | PostgreSQL cho Project Service |
-| **Weaviate** | weaviate:1.28.4 | 8080 | Vector database cho indexing/search |
-| **LLM** (external) | Ollama | 11434 | Large Language Model cho RAG generation |
+| Component          | Image              | Port  | Chức năng                               |
+| ------------------ | ------------------ | ----- | --------------------------------------- |
+| **auth_db**        | postgres:16-alpine | 5433  | PostgreSQL cho Auth Service             |
+| **project_db**     | postgres:16-alpine | 5434  | PostgreSQL cho Project Service          |
+| **Weaviate**       | weaviate:1.28.4    | 8080  | Vector database cho indexing/search     |
+| **LLM** (external) | Ollama             | 11434 | Large Language Model cho RAG generation |
 
 ---
 
@@ -69,34 +69,34 @@ Hệ thống được thiết kế theo kiến trúc **microservices**, mỗi se
 
 **tenants**
 
-| Column | Type | Constraint |
-|--------|------|------------|
-| id | UUID | PRIMARY KEY |
-| name | VARCHAR(255) | NOT NULL |
-| admin_email | VARCHAR(255) | NOT NULL |
-| created_at | TIMESTAMP | DEFAULT now() |
-| status | VARCHAR(50) | DEFAULT 'active' |
+| Column      | Type         | Constraint       |
+| ----------- | ------------ | ---------------- |
+| id          | UUID         | PRIMARY KEY      |
+| name        | VARCHAR(255) | NOT NULL         |
+| admin_email | VARCHAR(255) | NOT NULL         |
+| created_at  | TIMESTAMP    | DEFAULT now()    |
+| status      | VARCHAR(50)  | DEFAULT 'active' |
 
 **users**
 
-| Column | Type | Constraint |
-|--------|------|------------|
-| id | UUID | PRIMARY KEY |
-| tenant_id | UUID | FK → tenants.id |
-| email | VARCHAR(255) | UNIQUE, NOT NULL |
-| password_hash | TEXT | NOT NULL |
-| role | VARCHAR(20) | CHECK ('admin', 'member') |
-| created_at | TIMESTAMP | DEFAULT now() |
-| status | VARCHAR(50) | DEFAULT 'active' |
+| Column        | Type         | Constraint                |
+| ------------- | ------------ | ------------------------- |
+| id            | UUID         | PRIMARY KEY               |
+| tenant_id     | UUID         | FK → tenants.id           |
+| email         | VARCHAR(255) | UNIQUE, NOT NULL          |
+| password_hash | TEXT         | NOT NULL                  |
+| role          | VARCHAR(20)  | CHECK ('admin', 'member') |
+| created_at    | TIMESTAMP    | DEFAULT now()             |
+| status        | VARCHAR(50)  | DEFAULT 'active'          |
 
 **refresh_tokens**
 
-| Column | Type | Constraint |
-|--------|------|------------|
-| id | UUID | PRIMARY KEY |
-| user_id | UUID | FK → users.id |
-| token_hash | TEXT | NOT NULL |
-| expires_at | TIMESTAMP | NOT NULL |
+| Column     | Type      | Constraint    |
+| ---------- | --------- | ------------- |
+| id         | UUID      | PRIMARY KEY   |
+| user_id    | UUID      | FK → users.id |
+| token_hash | TEXT      | NOT NULL      |
+| expires_at | TIMESTAMP | NOT NULL      |
 | created_at | TIMESTAMP | DEFAULT now() |
 
 #### Quan hệ
@@ -108,15 +108,15 @@ user   1 ──── N refresh_tokens
 
 #### API Endpoints
 
-| Method | Path | Auth | Mô tả |
-|--------|------|------|-------|
-| GET | `/health` | — | Health check |
-| POST | `/auth/register` | — | Tạo tenant mới + admin user |
-| POST | `/auth/login` | — | Đăng nhập, trả access + refresh token |
-| POST | `/auth/refresh` | — | Đổi refresh token, trả token mới |
-| GET | `/auth/me` | Bearer | Thông tin user hiện tại |
-| POST | `/users` | Bearer (admin) | Tạo user trong tenant |
-| GET | `/users` | Bearer | List users trong tenant |
+| Method | Path             | Auth           | Mô tả                                 |
+| ------ | ---------------- | -------------- | ------------------------------------- |
+| GET    | `/health`        | —              | Health check                          |
+| POST   | `/auth/register` | —              | Tạo tenant mới + admin user           |
+| POST   | `/auth/login`    | —              | Đăng nhập, trả access + refresh token |
+| POST   | `/auth/refresh`  | —              | Đổi refresh token, trả token mới      |
+| GET    | `/auth/me`       | Bearer         | Thông tin user hiện tại               |
+| POST   | `/users`         | Bearer (admin) | Tạo user trong tenant                 |
+| GET    | `/users`         | Bearer         | List users trong tenant               |
 
 #### Cấu trúc file
 
@@ -150,37 +150,37 @@ auth_service/
 
 **projects**
 
-| Column | Type | Constraint |
-|--------|------|------------|
-| id | UUID | PRIMARY KEY |
-| tenant_id | UUID | NOT NULL, INDEX |
-| name | VARCHAR(255) | NOT NULL |
+| Column          | Type         | Constraint                               |
+| --------------- | ------------ | ---------------------------------------- |
+| id              | UUID         | PRIMARY KEY                              |
+| tenant_id       | UUID         | NOT NULL, INDEX                          |
+| name            | VARCHAR(255) | NOT NULL                                 |
 | embedding_model | VARCHAR(100) | NOT NULL, DEFAULT 'vietnamese-embedding' |
-| llm_model | VARCHAR(100) | NOT NULL, DEFAULT 'gpt-4o-mini' |
-| created_by | UUID | NOT NULL |
-| created_at | TIMESTAMP | DEFAULT now() |
-| status | VARCHAR(50) | DEFAULT 'active' |
+| llm_model       | VARCHAR(100) | NOT NULL, DEFAULT 'gpt-4o-mini'          |
+| created_by      | UUID         | NOT NULL                                 |
+| created_at      | TIMESTAMP    | DEFAULT now()                            |
+| status          | VARCHAR(50)  | DEFAULT 'active'                         |
 
 **api_keys**
 
-| Column | Type | Constraint |
-|--------|------|------------|
-| id | UUID | PRIMARY KEY |
-| project_id | UUID | FK → projects.id |
-| key_hash | TEXT | NOT NULL |
-| created_at | TIMESTAMP | DEFAULT now() |
-| status | VARCHAR(50) | DEFAULT 'active' |
+| Column     | Type        | Constraint       |
+| ---------- | ----------- | ---------------- |
+| id         | UUID        | PRIMARY KEY      |
+| project_id | UUID        | FK → projects.id |
+| key_hash   | TEXT        | NOT NULL         |
+| created_at | TIMESTAMP   | DEFAULT now()    |
+| status     | VARCHAR(50) | DEFAULT 'active' |
 
 **documents**
 
-| Column | Type | Constraint |
-|--------|------|------------|
-| id | UUID | PRIMARY KEY |
-| project_id | UUID | FK → projects.id |
-| file_name | VARCHAR(255) | NOT NULL |
-| s3_path | TEXT | NULLABLE |
-| status | VARCHAR(50) | CHECK ('uploaded','processing','indexed','failed') |
-| created_at | TIMESTAMP | DEFAULT now() |
+| Column     | Type         | Constraint                                         |
+| ---------- | ------------ | -------------------------------------------------- |
+| id         | UUID         | PRIMARY KEY                                        |
+| project_id | UUID         | FK → projects.id                                   |
+| file_name  | VARCHAR(255) | NOT NULL                                           |
+| s3_path    | TEXT         | NULLABLE                                           |
+| status     | VARCHAR(50)  | CHECK ('uploaded','processing','indexed','failed') |
+| created_at | TIMESTAMP    | DEFAULT now()                                      |
 
 #### Quan hệ
 
@@ -192,14 +192,14 @@ project 1 ──── N documents
 
 #### Embedding Model Registry
 
-| Key | Mô tả |
-|-----|-------|
-| vietnamese-embedding | dangvantuan/vietnamese-embedding |
-| bge-large-en-v1.5 | BAAI/bge-large-en-v1.5 |
-| bge-base-en-v1.5 | BAAI/bge-base-en-v1.5 |
-| bge-small-en-v1.5 | BAAI/bge-small-en-v1.5 |
-| multilingual-e5-large | intfloat/multilingual-e5-large |
-| multilingual-e5-base | intfloat/multilingual-e5-base |
+| Key                   | Mô tả                            |
+| --------------------- | -------------------------------- |
+| vietnamese-embedding  | dangvantuan/vietnamese-embedding |
+| bge-large-en-v1.5     | BAAI/bge-large-en-v1.5           |
+| bge-base-en-v1.5      | BAAI/bge-base-en-v1.5            |
+| bge-small-en-v1.5     | BAAI/bge-small-en-v1.5           |
+| multilingual-e5-large | intfloat/multilingual-e5-large   |
+| multilingual-e5-base  | intfloat/multilingual-e5-base    |
 
 #### LLM Model Registry
 
@@ -207,21 +207,21 @@ gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo, claude-3.5-sonnet, claude-3-hai
 
 #### API Endpoints
 
-| Method | Path | Auth | Mô tả |
-|--------|------|------|-------|
-| GET | `/health` | — | Health check |
-| GET | `/projects/models` | Bearer | Danh sách embedding + LLM models |
-| POST | `/projects` | Bearer | Tạo project (chọn embedding + LLM model) |
-| GET | `/projects` | Bearer | List projects của tenant |
-| GET | `/projects/{id}` | Bearer | Chi tiết project |
-| PUT | `/projects/{id}` | Bearer | Sửa project (name, models) |
-| POST | `/projects/{id}/api-keys` | Bearer | Tạo API key |
-| GET | `/projects/{id}/api-keys` | Bearer | List API keys |
-| POST | `/projects/{id}/documents` | Bearer | Tạo document metadata |
-| GET | `/projects/{id}/documents` | Bearer | List documents |
-| DELETE | `/documents/{id}` | Bearer | Xóa document |
-| POST | `/projects/{id}/documents/embed` | Bearer | Embed 1 text |
-| POST | `/projects/{id}/documents/embed-batch` | Bearer | Embed batch texts |
+| Method | Path                                   | Auth   | Mô tả                                    |
+| ------ | -------------------------------------- | ------ | ---------------------------------------- |
+| GET    | `/health`                              | —      | Health check                             |
+| GET    | `/projects/models`                     | Bearer | Danh sách embedding + LLM models         |
+| POST   | `/projects`                            | Bearer | Tạo project (chọn embedding + LLM model) |
+| GET    | `/projects`                            | Bearer | List projects của tenant                 |
+| GET    | `/projects/{id}`                       | Bearer | Chi tiết project                         |
+| PUT    | `/projects/{id}`                       | Bearer | Sửa project (name, models)               |
+| POST   | `/projects/{id}/api-keys`              | Bearer | Tạo API key                              |
+| GET    | `/projects/{id}/api-keys`              | Bearer | List API keys                            |
+| POST   | `/projects/{id}/documents`             | Bearer | Tạo document metadata                    |
+| GET    | `/projects/{id}/documents`             | Bearer | List documents                           |
+| DELETE | `/documents/{id}`                      | Bearer | Xóa document                             |
+| POST   | `/projects/{id}/documents/embed`       | Bearer | Embed 1 text                             |
+| POST   | `/projects/{id}/documents/embed-batch` | Bearer | Embed batch texts                        |
 
 #### Kết nối
 
@@ -260,25 +260,25 @@ project_service/
 
 #### Model Registry
 
-| Key (alias) | HuggingFace Model ID |
-|-------------|---------------------|
+| Key (alias)                    | HuggingFace Model ID             |
+| ------------------------------ | -------------------------------- |
 | vietnamese-embedding (default) | dangvantuan/vietnamese-embedding |
-| bge-large-en-v1.5 | BAAI/bge-large-en-v1.5 |
-| bge-base-en-v1.5 | BAAI/bge-base-en-v1.5 |
-| bge-small-en-v1.5 | BAAI/bge-small-en-v1.5 |
-| multilingual-e5-large | intfloat/multilingual-e5-large |
-| multilingual-e5-base | intfloat/multilingual-e5-base |
+| bge-large-en-v1.5              | BAAI/bge-large-en-v1.5           |
+| bge-base-en-v1.5               | BAAI/bge-base-en-v1.5            |
+| bge-small-en-v1.5              | BAAI/bge-small-en-v1.5           |
+| multilingual-e5-large          | intfloat/multilingual-e5-large   |
+| multilingual-e5-base           | intfloat/multilingual-e5-base    |
 
 Models được **lazy-load** khi có request đầu tiên sử dụng model đó, sau đó cache trong memory.
 
 #### API Endpoints
 
-| Method | Path | Auth | Mô tả |
-|--------|------|------|-------|
-| GET | `/health` | — | Status + danh sách models đã load |
-| GET | `/models` | — | Registry, default, loaded models |
-| POST | `/vectorize` | — | Embed 1 text → vector |
-| POST | `/vectorize/batch` | — | Embed nhiều texts → vectors |
+| Method | Path               | Auth | Mô tả                             |
+| ------ | ------------------ | ---- | --------------------------------- |
+| GET    | `/health`          | —    | Status + danh sách models đã load |
+| GET    | `/models`          | —    | Registry, default, loaded models  |
+| POST   | `/vectorize`       | —    | Embed 1 text → vector             |
+| POST   | `/vectorize/batch` | —    | Embed nhiều texts → vectors       |
 
 #### Request/Response
 
@@ -318,25 +318,25 @@ embedding_service/
 
 Mỗi project tạo 1 Weaviate class riêng: `Project_{sanitized_project_id}`
 
-| Property | Data Type | Mô tả |
-|----------|-----------|-------|
-| content | text | Nội dung document |
-| title | text | Tiêu đề |
-| doc_metadata | text | Metadata dạng string |
-| (vector) | float[] | Supplied externally (vectorizer: none) |
+| Property     | Data Type | Mô tả                                  |
+| ------------ | --------- | -------------------------------------- |
+| content      | text      | Nội dung document                      |
+| title        | text      | Tiêu đề                                |
+| doc_metadata | text      | Metadata dạng string                   |
+| (vector)     | float[]   | Supplied externally (vectorizer: none) |
 
 #### API Endpoints
 
-| Method | Path | Auth | Mô tả |
-|--------|------|------|-------|
-| GET | `/healthz` | — | Health check |
-| GET | `/readyz` | — | Check Weaviate + Embedding reachable |
-| POST | `/index/{project_id}/text` | Bearer | Index 1 đoạn text |
-| POST | `/index/{project_id}/json` | Bearer | Upload JSON file → tokenize → vectorize → import |
-| POST | `/index/{project_id}/batch` | Bearer | Index batch documents (JSON body) |
-| POST | `/index/{project_id}/search` | Bearer | Vector similarity search (không qua LLM) |
-| GET | `/index/{project_id}/status` | Bearer | Số documents đã index |
-| DELETE | `/index/{project_id}` | Bearer | Xóa toàn bộ index của project |
+| Method | Path                         | Auth   | Mô tả                                            |
+| ------ | ---------------------------- | ------ | ------------------------------------------------ |
+| GET    | `/healthz`                   | —      | Health check                                     |
+| GET    | `/readyz`                    | —      | Check Weaviate + Embedding reachable             |
+| POST   | `/index/{project_id}/text`   | Bearer | Index 1 đoạn text                                |
+| POST   | `/index/{project_id}/json`   | Bearer | Upload JSON file → tokenize → vectorize → import |
+| POST   | `/index/{project_id}/batch`  | Bearer | Index batch documents (JSON body)                |
+| POST   | `/index/{project_id}/search` | Bearer | Vector similarity search (không qua LLM)         |
+| GET    | `/index/{project_id}/status` | Bearer | Số documents đã index                            |
+| DELETE | `/index/{project_id}`        | Bearer | Xóa toàn bộ index của project                    |
 
 #### Pipeline Flow (JSON file)
 
@@ -426,11 +426,11 @@ Given this information, please answer the question: {user query}
 
 #### API Endpoints
 
-| Method | Path | Auth | Mô tả |
-|--------|------|------|-------|
-| GET | `/healthz` | — | Health check |
-| GET | `/readyz` | — | Check Weaviate + Embedding (LLM optional) |
-| POST | `/query/{project_id}` | Bearer | Full RAG query |
+| Method | Path                  | Auth   | Mô tả                                     |
+| ------ | --------------------- | ------ | ----------------------------------------- |
+| GET    | `/healthz`            | —      | Health check                              |
+| GET    | `/readyz`             | —      | Check Weaviate + Embedding (LLM optional) |
+| POST   | `/query/{project_id}` | Bearer | Full RAG query                            |
 
 #### Request/Response
 
@@ -501,35 +501,35 @@ query_service/
 
 #### Pages & Chức năng
 
-| Route | Page | Chức năng |
-|-------|------|-----------|
-| `/login` | Login | Đăng nhập, auto refresh token |
-| `/register` | Register | Đăng ký tenant + admin user |
-| `/` | Dashboard | Danh sách projects, tạo project (chọn models) |
-| `/projects/:id` | ProjectDetail | Chi tiết project với 6 tabs |
-| `/users` | Users | Quản lý users, admin tạo user mới |
+| Route           | Page          | Chức năng                                     |
+| --------------- | ------------- | --------------------------------------------- |
+| `/login`        | Login         | Đăng nhập, auto refresh token                 |
+| `/register`     | Register      | Đăng ký tenant + admin user                   |
+| `/`             | Dashboard     | Danh sách projects, tạo project (chọn models) |
+| `/projects/:id` | ProjectDetail | Chi tiết project với 6 tabs                   |
+| `/users`        | Users         | Quản lý users, admin tạo user mới             |
 
 #### ProjectDetail Tabs
 
-| Tab | Chức năng |
-|-----|-----------|
-| **RAG Chat** | Chat interface — hỏi đáp trên documents đã index, hiện sources |
-| **API Keys** | Tạo và xem API keys |
-| **Documents** | CRUD document metadata |
-| **Indexing** | Upload JSON, index text, xem status, clear index |
-| **Search** | Semantic search trên Weaviate (không qua LLM) |
-| **Embedding Playground** | Test embed text, xem vector + dimension |
+| Tab                      | Chức năng                                                      |
+| ------------------------ | -------------------------------------------------------------- |
+| **RAG Chat**             | Chat interface — hỏi đáp trên documents đã index, hiện sources |
+| **API Keys**             | Tạo và xem API keys                                            |
+| **Documents**            | CRUD document metadata                                         |
+| **Indexing**             | Upload JSON, index text, xem status, clear index               |
+| **Search**               | Semantic search trên Weaviate (không qua LLM)                  |
+| **Embedding Playground** | Test embed text, xem vector + dimension                        |
 
 #### Vite Proxy Configuration
 
-| Frontend Path | Backend Target | Rewrite |
-|---------------|----------------|---------|
-| `/api/auth/*` | `localhost:5001` | → `/auth/*` |
-| `/api/users/*` | `localhost:5001` | → `/users/*` |
-| `/api/projects/*` | `localhost:5002` | → `/projects/*` |
+| Frontend Path      | Backend Target   | Rewrite          |
+| ------------------ | ---------------- | ---------------- |
+| `/api/auth/*`      | `localhost:5001` | → `/auth/*`      |
+| `/api/users/*`     | `localhost:5001` | → `/users/*`     |
+| `/api/projects/*`  | `localhost:5002` | → `/projects/*`  |
 | `/api/documents/*` | `localhost:5002` | → `/documents/*` |
-| `/api/index/*` | `localhost:5004` | → `/index/*` |
-| `/api/query/*` | `localhost:5005` | → `/query/*` |
+| `/api/index/*`     | `localhost:5004` | → `/index/*`     |
+| `/api/query/*`     | `localhost:5005` | → `/query/*`     |
 
 #### Cấu trúc file
 
@@ -707,32 +707,32 @@ cp services/ui_service/.env.sample services/ui_service/.env
 
 ### Port Map
 
-| Port | Service |
-|------|---------|
-| 3000 | UI Service (React) |
-| 5001 | Auth Service (Flask) |
-| 5002 | Project Service (Flask) |
-| 5003 | Embedding Service (FastAPI) |
-| 5004 | Indexing Service (FastAPI) |
-| 5005 | Query Service (FastAPI) |
-| 5433 | PostgreSQL (auth_db) |
-| 5434 | PostgreSQL (project_db) |
-| 8080 | Weaviate |
-| 11434 | LLM / Ollama (external) |
+| Port  | Service                     |
+| ----- | --------------------------- |
+| 3000  | UI Service (React)          |
+| 5001  | Auth Service (Flask)        |
+| 5002  | Project Service (Flask)     |
+| 5003  | Embedding Service (FastAPI) |
+| 5004  | Indexing Service (FastAPI)  |
+| 5005  | Query Service (FastAPI)     |
+| 5433  | PostgreSQL (auth_db)        |
+| 5434  | PostgreSQL (project_db)     |
+| 8080  | Weaviate                    |
+| 11434 | LLM / Ollama (external)     |
 
 ---
 
 ## 8. Tech Stack Summary
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 19, Ant Design 5, Vite, Axios |
-| **Backend (Auth, Project)** | Python, Flask, SQLAlchemy, Flask-Migrate |
-| **Backend (Embedding, Indexing, Query)** | Python, FastAPI, Uvicorn |
-| **Database** | PostgreSQL 16 |
-| **Vector Database** | Weaviate 1.28.4 |
-| **Embedding Models** | HuggingFace Transformers, PyTorch |
-| **NLP** | pyvi (Vietnamese tokenization) |
-| **Authentication** | JWT (PyJWT) |
-| **LLM** | Ollama (local) / OpenAI-compatible API |
-| **Container** | Docker, Docker Compose |
+| Layer                                    | Technology                               |
+| ---------------------------------------- | ---------------------------------------- |
+| **Frontend**                             | React 19, Ant Design 5, Vite, Axios      |
+| **Backend (Auth, Project)**              | Python, Flask, SQLAlchemy, Flask-Migrate |
+| **Backend (Embedding, Indexing, Query)** | Python, FastAPI, Uvicorn                 |
+| **Database**                             | PostgreSQL 16                            |
+| **Vector Database**                      | Weaviate 1.28.4                          |
+| **Embedding Models**                     | HuggingFace Transformers, PyTorch        |
+| **NLP**                                  | pyvi (Vietnamese tokenization)           |
+| **Authentication**                       | JWT (PyJWT)                              |
+| **LLM**                                  | Ollama (local) / OpenAI-compatible API   |
+| **Container**                            | Docker, Docker Compose                   |

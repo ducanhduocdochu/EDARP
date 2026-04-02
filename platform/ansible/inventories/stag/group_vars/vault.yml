@@ -1,0 +1,8 @@
+---
+# Encrypt this file: ansible-vault encrypt inventories/stag/group_vars/vault.yml
+# Edit: ansible-vault edit inventories/stag/group_vars/vault.yml
+
+vault_rds_master_password: "ducanhdeptrai"
+vault_jwt_secret: "ducanhdeptrai"
+vault_harbor_admin_password: "ducanhdeptrai"
+vault_argocd_admin_password: "ducanhdeptrai"

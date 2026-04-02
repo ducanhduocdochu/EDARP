@@ -1,0 +1,22 @@
+---
+eks_cluster_name: "{{ name_prefix }}-eks"
+eks_namespace: platform-rag
+
+eks_service_accounts:
+  - name: auth-service
+  - name: project-service
+  - name: embedding-service
+  - name: indexing-service
+  - name: query-service
+  - name: ui-service
+
+eks_resource_quotas:
+  requests.cpu: "8"
+  requests.memory: "16Gi"
+  limits.cpu: "16"
+  limits.memory: "32Gi"
+
+eks_alb_controller_version: "v2.7.1"
+eks_alb_controller_chart_version: "1.7.1"
+
+eks_metrics_server_enabled: true

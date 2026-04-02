@@ -1,0 +1,11 @@
+---
+# Initialize RDS PostgreSQL databases (auth_db, project_db)
+# Usage: ansible-playbook playbooks/rds-init.yml -i inventories/stag/hosts.yml --ask-vault-pass
+
+- name: Initialize RDS databases
+  hosts: local
+  gather_facts: false
+
+  roles:
+    - role: rds_init
+      tags: [rds]

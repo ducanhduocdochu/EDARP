@@ -1,0 +1,102 @@
+---
+- name: Update kubeconfig
+  ansible.builtin.command: >
+    aws eks update-kubeconfig
+    --name {{ eks_cluster_name }}
+    --region {{ aws_region }}
+  changed_when: true
+  tags: [eks, kubeconfig]
+
+- name: Create application namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ eks_namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ansible
+          environment: "{{ env }}"
+  tags: [eks, namespace]
+
+- name: Create service accounts
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: "{{ item.name }}"
+        namespace: "{{ eks_namespace }}"
+        labels:
+          app.kubernetes.io/component: "{{ item.name }}"
+  loop: "{{ eks_service_accounts }}"
+  tags: [eks, rbac]
+
+- name: Create resource quotas
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: "{{ eks_namespace }}-quota"
+        namespace: "{{ eks_namespace }}"
+      spec:
+        hard: "{{ eks_resource_quotas }}"
+  tags: [eks, quota]
+
+- name: Deploy application secrets
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: platform-rag-secrets
+        namespace: "{{ eks_namespace }}"
+      type: Opaque
+      stringData:
+        JWT_SECRET: "{{ jwt_secret }}"
+        RDS_AUTH_HOST: "{{ rds_auth_host }}"
+        RDS_AUTH_PORT: "{{ rds_auth_port | string }}"
+        RDS_AUTH_DB: "{{ rds_auth_db }}"
+        RDS_PROJECT_HOST: "{{ rds_project_host }}"
+        RDS_PROJECT_PORT: "{{ rds_project_port | string }}"
+        RDS_PROJECT_DB: "{{ rds_project_db }}"
+        RDS_USERNAME: "{{ rds_master_username }}"
+        RDS_PASSWORD: "{{ rds_master_password }}"
+        WEAVIATE_URL: "http://{{ hostvars['weaviate-' + env]['ansible_host'] }}:{{ weaviate_port }}"
+        LLM_API_URL: "{{ llm_api_url }}"
+  no_log: true
+  tags: [eks, secrets]
+
+- name: Deploy network policy
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'network-policy.yml.j2') | from_yaml }}"
+  tags: [eks, network]
+
+- name: Install AWS Load Balancer Controller via Helm
+  kubernetes.core.helm:
+    name: aws-load-balancer-controller
+    chart_ref: eks/aws-load-balancer-controller
+    chart_version: "{{ eks_alb_controller_chart_version }}"
+    release_namespace: kube-system
+    create_namespace: false
+    values:
+      clusterName: "{{ eks_cluster_name }}"
+      serviceAccount:
+        create: true
+        name: aws-load-balancer-controller
+      region: "{{ aws_region }}"
+      vpcId: "{{ lookup('env', 'VPC_ID') }}"
+  tags: [eks, alb]
+
+- name: Install Metrics Server
+  kubernetes.core.k8s:
+    state: present
+    src: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  when: eks_metrics_server_enabled
+  tags: [eks, metrics]
